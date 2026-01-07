@@ -1,6 +1,6 @@
 sources:
   - name: jaffle_shop
-    database: raw  
+    database: raw
     schema: jaffle_shop
     description: A clone of a Postgres application database.
     config:
@@ -23,10 +23,11 @@ sources:
               - not_null
       - name: customers
         description: Raw customers data
-        freshness: null
         columns:
           - name: id
             description: Primary key for customers data
             data_tests:
               - unique
               - not_null
+        config:
+          freshness:
