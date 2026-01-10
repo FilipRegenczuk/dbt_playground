@@ -5,7 +5,7 @@ with payments as (
     where payment_status = 'success'
 ),
 
-pivoted as (
+final as (
     select
         order_id,
         {%- for method in payment_methods -%}
@@ -18,4 +18,4 @@ pivoted as (
     group by order_id
 )
 
-select * from pivoted
+select * from final
