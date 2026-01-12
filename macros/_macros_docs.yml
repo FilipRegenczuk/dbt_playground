@@ -1,0 +1,17 @@
+macros:
+  - name: cents_to_dollars
+    description: Converts a column from cents to dollars
+    arguments:
+      - name: column_name
+        description: The column to convert
+        type: string
+      - name: decimals
+        description: The number of decimal places to round to
+        type: integer
+        default: 2
+    example:
+      - name: cents_to_dollars
+        description: Converts the amount column from cents to dollars
+        code:
+          - {{ cents_to_dollars('amount') }}  # default is 2 decimal places
+          - {{ cents_to_dollars('amount', 4) }}
