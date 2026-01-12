@@ -24,5 +24,9 @@ models:
       +materialized: view
     marts:
       +materialized: table
+      core:
+        +materialized: table
+      aggregates:
+        +materialized: table 
 flags:
   require_generic_test_arguments_property: true
