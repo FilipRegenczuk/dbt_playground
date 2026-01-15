@@ -1,17 +1,120 @@
+version: 2
+
 macros:
   - name: cents_to_dollars
-    description: Converts a column from cents to dollars
+    description: |
+      Converts a column value from cents to dollars by dividing by 100.
+      Useful for formatting monetary values stored as integers.
     arguments:
       - name: column_name
-        description: The column to convert
+        description: The column name or expression to convert from cents to dollars
         type: string
+        required: true
       - name: decimals
-        description: The number of decimal places to round to
+        description: The number of decimal places to round the result to
         type: integer
         default: 2
-    example:
-      - name: cents_to_dollars
-        description: Converts the amount column from cents to dollars
-        code:
-          - {{ cents_to_dollars('amount') }}  # default is 2 decimal places
-          - {{ cents_to_dollars('amount', 4) }}
+    examples:
+      - name: Basic conversion with default decimals
+        description: Converts the amount column from cents to dollars with 2 decimal places
+        code: |
+          SELECT
+              order_id,
+              {{ cents_to_dollars('amount') }} as amount_dollars
+          FROM orders
+      - name: Custom decimal precision
+        description: Convert with 4 decimal places for precise calculations
+        code: |
+          SELECT
+              {{ cents_to_dollars('amount', 4) }} as amount_dollars
+          FROM transactions
+
+  - name: grant_select
+    description: |
+      Grants SELECT privileges and USAGE on a schema to a specific role.
+      This is a convenience macro for granting read-only access to all tables in a schema.
+      Executes immediately when called via run-operation.
+    arguments:
+      - name: schema
+        description: The schema to grant privileges on
+        type: string
+        default: target.schema
+      - name: role
+        description: The role to grant privileges to
+        type: string
+        default: target.role
+      - name: database
+        description: The database containing the schema
+        type: string
+        default: target.database
+    examples:
+      - name: Grant SELECT using target defaults
+        description: Grant read access using schema and role from the current target
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_select
+      - name: Grant SELECT to specific schema and role
+        description: Grant read access to a specific schema and role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_select --args '{
+            schema: "analytics",
+            role: "analyst_role",
+            database: "production"
+          }'
+
+  - name: grant_multiple_privileges
+    description: |
+      Grants multiple specified privileges to a specific role for all tables in a schema.
+      Useful for batch granting permissions after model runs or for setting up role-based access control.
+      Executes immediately when called via run-operation.
+    arguments:
+      - name: privileges
+        description: |
+          List of privileges to grant. Common values include:
+          - SELECT: read access
+          - INSERT: write access
+          - UPDATE: modify access
+          - DELETE: delete access
+          - TRUNCATE: truncate table access
+        type: list of strings
+        required: true
+      - name: schema
+        description: The schema to grant privileges on
+        type: string
+        default: target.schema
+      - name: role
+        description: The role to grant privileges to
+        type: string
+        default: target.role
+      - name: database
+        description: The database containing the schema
+        type: string
+        default: target.database
+    examples:
+      - name: Grant SELECT and INSERT privileges
+        description: Grant read and write access to a specific role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_multiple_privileges --args '{
+            privileges: ["SELECT", "INSERT"],
+            schema: "analytics",
+            role: "analyst_role"
+          }'
+      - name: Grant multiple privileges using defaults
+        description: Grant privileges using target schema and role from profiles.yml
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_multiple_privileges --args '{
+            privileges: ["SELECT", "UPDATE", "DELETE"]
+          }'
+      - name: Grant all common privileges
+        description: Grant full DML access to a role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_multiple_privileges --args '{
+            privileges: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+            schema: "analytics",
+            role: "data_engineer_role",
+            database: "production"
+          }'
