@@ -99,6 +99,7 @@ This project uses environment variables for sensitive credentials (stored in `.e
    SNOWFLAKE_WAREHOUSE=your_warehouse
    SNOWFLAKE_DATABASE=your_database
    SNOWFLAKE_SCHEMA=your_schema
+   SNOWFLAKE_ROLE=your_role
    ```
 
 3. **Allow direnv to load the `.envrc` file** (first time only):
@@ -123,7 +124,9 @@ create warehouse transforming;
 
 create database raw; 
 
-create database analytics; 
+create database analytics;
+
+create role transformer;
 
 create schema raw.jaffle_shop; 
 
