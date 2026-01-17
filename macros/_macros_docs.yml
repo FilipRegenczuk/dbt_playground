@@ -177,3 +177,62 @@ macros:
           uv run dbt run-operation grant_schema_privileges --args '{
             privileges: ["USAGE"]
           }'
+
+  - name: union_tables_by_prefix
+    description: |
+      Dynamically unions multiple tables with the same prefix into a single result set.
+      This macro finds all tables in a schema that start with a given prefix and combines them
+      using UNION ALL. Particularly useful for:
+      - Combining sharded tables (e.g., orders_2023, orders_2024)
+      - Merging date-partitioned tables (e.g., events_20230101, events_20230102)
+      - Consolidating tables from different sources with consistent naming
+      
+      Note: All tables must have compatible schemas (same columns and data types).
+      Requires the dbt_utils package to be installed.
+    arguments:
+      - name: prefix
+        description: |
+          The prefix to search for. Only tables starting with this string will be included.
+          Examples: 'stg_', 'raw_orders_', 'fact_'
+        type: string
+        required: true
+      - name: database
+        description: The database to search for tables in
+        type: string
+        default: target.database
+      - name: schema
+        description: The schema to search for tables in
+        type: string
+        default: target.schema
+    examples:
+      - name: Union staging tables with default database/schema
+        description: Combine all tables starting with 'stg_jaffle_' in the target schema
+        code: |
+          -- models/unioned_jaffle.sql
+          {{ union_tables_by_prefix('stg_jaffle_') }}
+      - name: Union tables from specific database and schema
+        description: Combine raw order tables from a specific location
+        code: |
+          -- models/all_orders.sql
+          {{ union_tables_by_prefix('orders_', database='raw', schema='jaffle_shop') }}
+      - name: Union date-partitioned tables
+        description: Combine all date-partitioned event tables
+        code: |
+          -- models/all_events.sql
+          {{ union_tables_by_prefix('events_202401', database='raw', schema='tracking') }}
+      - name: Use in a CTE
+        description: Union tables and apply additional transformations
+        code: |
+          -- models/processed_orders.sql
+          with unioned_data as (
+              {{ union_tables_by_prefix('raw_orders_') }}
+          ),
+          
+          final as (
+              select
+                  *,
+                  current_timestamp() as processed_at
+              from unioned_data
+          )
+          
+          select * from final
