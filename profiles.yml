@@ -9,4 +9,5 @@ default:
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
       database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
       schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
       threads: 4

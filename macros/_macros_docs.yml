@@ -1,0 +1,297 @@
+version: 2
+
+macros:
+  - name: cents_to_dollars
+    description: |
+      Converts a column value from cents to dollars by dividing by 100.
+      Useful for formatting monetary values stored as integers.
+    arguments:
+      - name: column_name
+        description: The column name or expression to convert from cents to dollars
+        type: string
+        required: true
+      - name: decimals
+        description: The number of decimal places to round the result to
+        type: integer
+        default: 2
+    examples:
+      - name: Basic conversion with default decimals
+        description: Converts the amount column from cents to dollars with 2 decimal places
+        code: |
+          SELECT
+              order_id,
+              {{ cents_to_dollars('amount') }} as amount_dollars
+          FROM orders
+      - name: Custom decimal precision
+        description: Convert with 4 decimal places for precise calculations
+        code: |
+          SELECT
+              {{ cents_to_dollars('amount', 4) }} as amount_dollars
+          FROM transactions
+
+  - name: grant_select
+    description: |
+      Grants SELECT privileges and USAGE on a schema to a specific role.
+      This is a convenience macro for granting read-only access to all tables in a schema.
+      Executes immediately when called via run-operation.
+    arguments:
+      - name: schema
+        description: The schema to grant privileges on
+        type: string
+        default: target.schema
+      - name: role
+        description: The role to grant privileges to
+        type: string
+        default: target.role
+      - name: database
+        description: The database containing the schema
+        type: string
+        default: target.database
+    examples:
+      - name: Grant SELECT using target defaults
+        description: Grant read access using schema and role from the current target
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_select
+      - name: Grant SELECT to specific schema and role
+        description: Grant read access to a specific schema and role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_select --args '{
+            schema: "analytics",
+            role: "analyst_role",
+            database: "production"
+          }'
+
+  - name: grant_table_privileges
+    description: |
+      Grants multiple specified privileges to a specific role for all tables in a schema.
+      Useful for batch granting table-level permissions after model runs or for setting up role-based access control.
+      Executes immediately when called via run-operation.
+    arguments:
+      - name: privileges
+        description: |
+          List of table-level privileges to grant. Common values include:
+          - SELECT: read access
+          - INSERT: write access
+          - UPDATE: modify access
+          - DELETE: delete access
+          - TRUNCATE: truncate table access
+        type: list of strings
+        required: true
+      - name: schema
+        description: The schema containing the tables to grant privileges on
+        type: string
+        default: target.schema
+      - name: role
+        description: The role to grant privileges to
+        type: string
+        default: target.role
+      - name: database
+        description: The database containing the schema
+        type: string
+        default: target.database
+    examples:
+      - name: Grant SELECT and INSERT privileges
+        description: Grant read and write access to tables
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_table_privileges --args '{
+            privileges: ["SELECT", "INSERT"],
+            schema: "analytics",
+            role: "analyst_role"
+          }'
+      - name: Grant multiple privileges using defaults
+        description: Grant privileges using target schema and role from profiles.yml
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_table_privileges --args '{
+            privileges: ["SELECT", "UPDATE", "DELETE"]
+          }'
+      - name: Grant all common CRUD privileges
+        description: Grant full DML access to tables
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_table_privileges --args '{
+            privileges: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+            schema: "analytics",
+            role: "data_engineer_role",
+            database: "production"
+          }'
+
+  - name: grant_schema_privileges
+    description: |
+      Grants multiple specified privileges to a specific role on a schema (not tables).
+      This grants schema-level permissions like USAGE, CREATE TABLE, CREATE VIEW, MODIFY.
+      Essential for roles that need to create or manage objects within a schema.
+      Use this for dbt transformation roles that need to materialize models.
+      Executes immediately when called via run-operation.
+    arguments:
+      - name: privileges
+        description: |
+          List of schema-level privileges to grant. Common values include:
+          - USAGE: Basic schema access (required for most operations)
+          - CREATE TABLE: Ability to create tables in the schema
+          - CREATE VIEW: Ability to create views in the schema
+          - MODIFY: Ability to modify schema settings
+          - CREATE STAGE: Ability to create stages
+          - CREATE FILE FORMAT: Ability to create file formats
+        type: list of strings
+        required: true
+      - name: schema
+        description: The schema to grant privileges on
+        type: string
+        default: target.schema
+      - name: role
+        description: The role to grant privileges to
+        type: string
+        default: target.role
+      - name: database
+        description: The database containing the schema
+        type: string
+        default: target.database
+    examples:
+      - name: Grant basic schema access for dbt
+        description: Grant essential permissions for a dbt transformation role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_schema_privileges --args '{
+            privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW"],
+            schema: "analytics",
+            role: "transformer"
+          }'
+      - name: Grant full schema management access
+        description: Grant comprehensive schema-level permissions
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_schema_privileges --args '{
+            privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW", "MODIFY"],
+            schema: "analytics",
+            role: "data_engineer_role",
+            database: "production"
+          }'
+      - name: Grant schema access using defaults
+        description: Grant USAGE permission using target schema and role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_schema_privileges --args '{
+            privileges: ["USAGE"]
+          }'
+
+  - name: union_tables_by_prefix
+    description: |
+      Dynamically unions multiple tables with the same prefix into a single result set.
+      This macro finds all tables in a schema that start with a given prefix and combines them
+      using UNION ALL. Particularly useful for:
+      - Combining sharded tables (e.g., orders_2023, orders_2024)
+      - Merging date-partitioned tables (e.g., events_20230101, events_20230102)
+      - Consolidating tables from different sources with consistent naming
+      
+      Note: All tables must have compatible schemas (same columns and data types).
+      Requires the dbt_utils package to be installed.
+    arguments:
+      - name: prefix
+        description: |
+          The prefix to search for. Only tables starting with this string will be included.
+          Examples: 'stg_', 'raw_orders_', 'fact_'
+        type: string
+        required: true
+      - name: database
+        description: The database to search for tables in
+        type: string
+        default: target.database
+      - name: schema
+        description: The schema to search for tables in
+        type: string
+        default: target.schema
+    examples:
+      - name: Union staging tables with default database/schema
+        description: Combine all tables starting with 'stg_jaffle_' in the target schema
+        code: |
+          -- models/unioned_jaffle.sql
+          {{ union_tables_by_prefix('stg_jaffle_') }}
+      - name: Union tables from specific database and schema
+        description: Combine raw order tables from a specific location
+        code: |
+          -- models/all_orders.sql
+          {{ union_tables_by_prefix('orders_', database='raw', schema='jaffle_shop') }}
+      - name: Union date-partitioned tables
+        description: Combine all date-partitioned event tables
+        code: |
+          -- models/all_events.sql
+          {{ union_tables_by_prefix('events_202401', database='raw', schema='tracking') }}
+      - name: Use in a CTE
+        description: Union tables and apply additional transformations
+        code: |
+          -- models/processed_orders.sql
+          with unioned_data as (
+              {{ union_tables_by_prefix('raw_orders_') }}
+          ),
+          
+          final as (
+              select
+                  *,
+                  current_timestamp() as processed_at
+              from unioned_data
+          )
+          
+          select * from final
+
+  - name: clean_stale_models
+    description: |
+      Drops stale tables and views that haven't been modified in a specified number of days.
+      This macro queries information_schema to find objects older than the threshold and drops them.
+      Extremely useful for cleaning up development/test schemas with temporary tables and scratch models.
+      
+      Safety features:
+      - Uses DROP IF EXISTS to handle missing tables gracefully
+      - Only affects the specified schema (not entire database)
+      - Provides detailed logging of all actions for audit trail
+      - Reports count of objects before dropping
+      
+      Warning: This is a destructive operation. Use with caution in production schemas.
+      Recommended for dev/test/scratch schemas only.
+    arguments:
+      - name: older_than_days
+        description: |
+          Number of days since last modification. Tables/views not modified in this many days will be dropped.
+          Set to 0 to drop all tables modified today or earlier (use with extreme caution).
+          Common values: 7 (weekly cleanup), 30 (monthly cleanup), 90 (quarterly cleanup)
+        type: integer
+        default: 30
+      - name: database
+        description: The database to search for stale models
+        type: string
+        default: target.database
+      - name: schema
+        description: The schema to search for stale models (only this schema will be affected)
+        type: string
+        default: target.schema
+    examples:
+      - name: Clean models older than 5 days
+        description: Drop all tables/views in the target schema not modified in 5 days
+        code: |
+          # Run from terminal
+          uv run dbt run-operation clean_stale_models --args '{older_than_days: 5}'
+      - name: Clean specific dev schema
+        description: Clean up a specific development schema with 7-day retention
+        code: |
+          # Run from terminal
+          uv run dbt run-operation clean_stale_models --args '{
+            older_than_days: 7,
+            schema: "dev_scratch",
+            database: "analytics"
+          }'
+      - name: Monthly cleanup with defaults
+        description: Use default 30-day retention on target schema
+        code: |
+          # Run from terminal
+          uv run dbt run-operation clean_stale_models
+      - name: Clean all models (dangerous)
+        description: Drop all tables/views regardless of age (use with extreme caution)
+        code: |
+          # Run from terminal - WARNING: Drops all tables!
+          uv run dbt run-operation clean_stale_models --args '{
+            older_than_days: 0,
+            schema: "temp_testing"
+          }'

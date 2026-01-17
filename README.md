@@ -99,6 +99,7 @@ This project uses environment variables for sensitive credentials (stored in `.e
    SNOWFLAKE_WAREHOUSE=your_warehouse
    SNOWFLAKE_DATABASE=your_database
    SNOWFLAKE_SCHEMA=your_schema
+   SNOWFLAKE_ROLE=your_role
    ```
 
 3. **Allow direnv to load the `.envrc` file** (first time only):
@@ -111,6 +112,169 @@ The `.env` file is gitignored and will not be committed to version control. The 
 ## Usage
 
 After installation and configuration, you can use dbt commands directly. **direnv automatically loads your `.env` file** when you enter the project directory, so all environment variables are available.
+
+### Preparing Snowflake instance
+
+In Snowflake execute following commands to set up instaces and load test data:
+```sql
+
+-- create test instances
+
+create warehouse transforming; 
+
+create database raw; 
+
+create database analytics;
+
+create role transformer;
+
+create schema raw.jaffle_shop; 
+
+create schema raw.stripe;
+
+create schema analytics.local;
+
+
+-- create test tables
+create table raw.jaffle_shop.customers 
+( id integer,
+  first_name varchar,
+  last_name varchar
+);
+
+create table raw.jaffle_shop.orders
+( id integer,
+  user_id integer,
+  order_date date,
+  status varchar,
+  _etl_loaded_at timestamp default current_timestamp
+);
+
+create table raw.stripe.payment 
+( id integer,
+  orderid integer,
+  paymentmethod varchar,
+  status varchar,
+  amount integer,
+  created date,
+  _batched_at timestamp default current_timestamp
+);
+
+-- populate test tables
+
+copy into raw.jaffle_shop.customers (id, first_name, last_name)
+from 's3://dbt-tutorial-public/jaffle_shop_customers.csv'
+file_format = (
+    type = 'CSV'
+    field_delimiter = ','
+    skip_header = 1
+    );
+    
+copy into raw.jaffle_shop.orders (id, user_id, order_date, status)
+from 's3://dbt-tutorial-public/jaffle_shop_orders.csv'
+file_format = (
+    type = 'CSV'
+    field_delimiter = ','
+    skip_header = 1
+    );
+
+copy into raw.stripe.payment (id, orderid, paymentmethod, status, amount, created)
+from 's3://dbt-tutorial-public/stripe_payments.csv'
+file_format = (
+    type = 'CSV'
+    field_delimiter = ','
+    skip_header = 1
+    );
+```
+
+### RBAC helper macros
+
+This project includes helper macros for managing Role-Based Access Control (RBAC) in Snowflake.
+
+#### Available Macros
+
+1. **`grant_schema_privileges`** - Grants schema-level privileges (USAGE, CREATE TABLE, CREATE VIEW, etc.)
+2. **`grant_table_privileges`** - Grants table-level privileges (SELECT, INSERT, UPDATE, DELETE, etc.)
+3. **`grant_select`** - Convenience macro for granting read-only access
+
+#### Setting up a role with full dbt access
+
+To set up a role (e.g., `transformer`) with full access to a schema for dbt materialization:
+
+**Step 1: Grant schema-level privileges** (required for creating tables/views)
+
+```bash
+uv run dbt run-operation grant_schema_privileges --args '{
+  privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW", "MODIFY"],
+  schema: "local",
+  role: "transformer",
+  database: "analytics"
+}'
+```
+
+**Step 2: Grant table-level CRUD privileges** (for existing tables)
+
+```bash
+uv run dbt run-operation grant_table_privileges --args '{
+  privileges: ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+  schema: "local",
+  role: "transformer",
+  database: "analytics"
+}'
+```
+
+#### Common Use Cases
+
+**Grant read-only access to analysts:**
+
+```bash
+uv run dbt run-operation grant_select --args '{
+  schema: "local",
+  role: "analyst_role",
+  database: "analytics"
+}'
+```
+
+**Grant write access to data engineers:**
+
+```bash
+# Schema-level permissions
+uv run dbt run-operation grant_schema_privileges --args '{
+  privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW"],
+  schema: "local",
+  role: "data_engineer"
+}'
+
+# Table-level permissions
+uv run dbt run-operation grant_table_privileges --args '{
+  privileges: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+  schema: "local",
+  role: "data_engineer"
+}'
+```
+
+**Using defaults from profiles.yml:**
+
+If your target in `profiles.yml` already specifies the database, schema, and role, you can omit those parameters:
+
+```bash
+uv run dbt run-operation grant_schema_privileges --args '{
+  privileges: ["USAGE", "CREATE TABLE"]
+}'
+```
+
+#### Important Notes
+
+- **Schema must exist first**: The schema must be created before granting privileges. You can create it in Snowflake with:
+  ```sql
+  CREATE SCHEMA IF NOT EXISTS analytics.local;
+  ```
+- **Future grants**: These macros grant privileges on existing objects only. For new tables created by dbt, either:
+  - Run the macros again after creating new tables
+  - Set up FUTURE grants in Snowflake directly
+- **Order matters**: Grant schema-level privileges before table-level privileges
+
+For more details on macro arguments and examples, see `macros/_macros_docs.yml`.
 
 ### Running dbt commands
 
