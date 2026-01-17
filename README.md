@@ -132,6 +132,8 @@ create schema raw.jaffle_shop;
 
 create schema raw.stripe;
 
+create schema analytics.local;
+
 
 -- create test tables
 create table raw.jaffle_shop.customers 
@@ -184,6 +186,95 @@ file_format = (
     skip_header = 1
     );
 ```
+
+### RBAC helper macros
+
+This project includes helper macros for managing Role-Based Access Control (RBAC) in Snowflake.
+
+#### Available Macros
+
+1. **`grant_schema_privileges`** - Grants schema-level privileges (USAGE, CREATE TABLE, CREATE VIEW, etc.)
+2. **`grant_table_privileges`** - Grants table-level privileges (SELECT, INSERT, UPDATE, DELETE, etc.)
+3. **`grant_select`** - Convenience macro for granting read-only access
+
+#### Setting up a role with full dbt access
+
+To set up a role (e.g., `transformer`) with full access to a schema for dbt materialization:
+
+**Step 1: Grant schema-level privileges** (required for creating tables/views)
+
+```bash
+uv run dbt run-operation grant_schema_privileges --args '{
+  privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW", "MODIFY"],
+  schema: "local",
+  role: "transformer",
+  database: "analytics"
+}'
+```
+
+**Step 2: Grant table-level CRUD privileges** (for existing tables)
+
+```bash
+uv run dbt run-operation grant_table_privileges --args '{
+  privileges: ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+  schema: "local",
+  role: "transformer",
+  database: "analytics"
+}'
+```
+
+#### Common Use Cases
+
+**Grant read-only access to analysts:**
+
+```bash
+uv run dbt run-operation grant_select --args '{
+  schema: "local",
+  role: "analyst_role",
+  database: "analytics"
+}'
+```
+
+**Grant write access to data engineers:**
+
+```bash
+# Schema-level permissions
+uv run dbt run-operation grant_schema_privileges --args '{
+  privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW"],
+  schema: "local",
+  role: "data_engineer"
+}'
+
+# Table-level permissions
+uv run dbt run-operation grant_table_privileges --args '{
+  privileges: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+  schema: "local",
+  role: "data_engineer"
+}'
+```
+
+**Using defaults from profiles.yml:**
+
+If your target in `profiles.yml` already specifies the database, schema, and role, you can omit those parameters:
+
+```bash
+uv run dbt run-operation grant_schema_privileges --args '{
+  privileges: ["USAGE", "CREATE TABLE"]
+}'
+```
+
+#### Important Notes
+
+- **Schema must exist first**: The schema must be created before granting privileges. You can create it in Snowflake with:
+  ```sql
+  CREATE SCHEMA IF NOT EXISTS analytics.local;
+  ```
+- **Future grants**: These macros grant privileges on existing objects only. For new tables created by dbt, either:
+  - Run the macros again after creating new tables
+  - Set up FUTURE grants in Snowflake directly
+- **Order matters**: Grant schema-level privileges before table-level privileges
+
+For more details on macro arguments and examples, see `macros/_macros_docs.yml`.
 
 ### Running dbt commands
 

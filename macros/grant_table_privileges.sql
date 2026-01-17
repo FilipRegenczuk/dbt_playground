@@ -13,17 +13,17 @@
   
   Usage:
       Run from terminal:
-      uv run dbt run-operation grant_multiple_privileges --args '{
+      uv run dbt run-operation grant_table_privileges --args '{
         privileges: ["SELECT", "INSERT"],
         schema: "analytics",
         role: "data_engineer"
       }'
   
   Example:
-      {{ grant_multiple_privileges(['SELECT', 'UPDATE'], 'analytics', 'analyst_role') }}
+      {{ grant_table_privileges(['SELECT', 'UPDATE'], 'analytics', 'analyst_role') }}
 #}
 
-{% macro grant_multiple_privileges(privileges, schema=target.schema, role=target.role, database=target.database) %}
+{% macro grant_table_privileges(privileges, schema=target.schema, role=target.role, database=target.database) %}
 
     {% set sql %}
         use database {{ database }};

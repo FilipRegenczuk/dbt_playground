@@ -63,20 +63,79 @@ macros:
             database: "production"
           }'
 
-  - name: grant_multiple_privileges
+  - name: grant_table_privileges
     description: |
       Grants multiple specified privileges to a specific role for all tables in a schema.
-      Useful for batch granting permissions after model runs or for setting up role-based access control.
+      Useful for batch granting table-level permissions after model runs or for setting up role-based access control.
       Executes immediately when called via run-operation.
     arguments:
       - name: privileges
         description: |
-          List of privileges to grant. Common values include:
+          List of table-level privileges to grant. Common values include:
           - SELECT: read access
           - INSERT: write access
           - UPDATE: modify access
           - DELETE: delete access
           - TRUNCATE: truncate table access
+        type: list of strings
+        required: true
+      - name: schema
+        description: The schema containing the tables to grant privileges on
+        type: string
+        default: target.schema
+      - name: role
+        description: The role to grant privileges to
+        type: string
+        default: target.role
+      - name: database
+        description: The database containing the schema
+        type: string
+        default: target.database
+    examples:
+      - name: Grant SELECT and INSERT privileges
+        description: Grant read and write access to tables
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_table_privileges --args '{
+            privileges: ["SELECT", "INSERT"],
+            schema: "analytics",
+            role: "analyst_role"
+          }'
+      - name: Grant multiple privileges using defaults
+        description: Grant privileges using target schema and role from profiles.yml
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_table_privileges --args '{
+            privileges: ["SELECT", "UPDATE", "DELETE"]
+          }'
+      - name: Grant all common CRUD privileges
+        description: Grant full DML access to tables
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_table_privileges --args '{
+            privileges: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+            schema: "analytics",
+            role: "data_engineer_role",
+            database: "production"
+          }'
+
+  - name: grant_schema_privileges
+    description: |
+      Grants multiple specified privileges to a specific role on a schema (not tables).
+      This grants schema-level permissions like USAGE, CREATE TABLE, CREATE VIEW, MODIFY.
+      Essential for roles that need to create or manage objects within a schema.
+      Use this for dbt transformation roles that need to materialize models.
+      Executes immediately when called via run-operation.
+    arguments:
+      - name: privileges
+        description: |
+          List of schema-level privileges to grant. Common values include:
+          - USAGE: Basic schema access (required for most operations)
+          - CREATE TABLE: Ability to create tables in the schema
+          - CREATE VIEW: Ability to create views in the schema
+          - MODIFY: Ability to modify schema settings
+          - CREATE STAGE: Ability to create stages
+          - CREATE FILE FORMAT: Ability to create file formats
         type: list of strings
         required: true
       - name: schema
@@ -92,29 +151,29 @@ macros:
         type: string
         default: target.database
     examples:
-      - name: Grant SELECT and INSERT privileges
-        description: Grant read and write access to a specific role
+      - name: Grant basic schema access for dbt
+        description: Grant essential permissions for a dbt transformation role
         code: |
           # Run from terminal
-          uv run dbt run-operation grant_multiple_privileges --args '{
-            privileges: ["SELECT", "INSERT"],
+          uv run dbt run-operation grant_schema_privileges --args '{
+            privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW"],
             schema: "analytics",
-            role: "analyst_role"
+            role: "transformer"
           }'
-      - name: Grant multiple privileges using defaults
-        description: Grant privileges using target schema and role from profiles.yml
+      - name: Grant full schema management access
+        description: Grant comprehensive schema-level permissions
         code: |
           # Run from terminal
-          uv run dbt run-operation grant_multiple_privileges --args '{
-            privileges: ["SELECT", "UPDATE", "DELETE"]
-          }'
-      - name: Grant all common privileges
-        description: Grant full DML access to a role
-        code: |
-          # Run from terminal
-          uv run dbt run-operation grant_multiple_privileges --args '{
-            privileges: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+          uv run dbt run-operation grant_schema_privileges --args '{
+            privileges: ["USAGE", "CREATE TABLE", "CREATE VIEW", "MODIFY"],
             schema: "analytics",
             role: "data_engineer_role",
             database: "production"
+          }'
+      - name: Grant schema access using defaults
+        description: Grant USAGE permission using target schema and role
+        code: |
+          # Run from terminal
+          uv run dbt run-operation grant_schema_privileges --args '{
+            privileges: ["USAGE"]
           }'
