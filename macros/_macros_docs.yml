@@ -236,3 +236,62 @@ macros:
           )
           
           select * from final
+
+  - name: clean_stale_models
+    description: |
+      Drops stale tables and views that haven't been modified in a specified number of days.
+      This macro queries information_schema to find objects older than the threshold and drops them.
+      Extremely useful for cleaning up development/test schemas with temporary tables and scratch models.
+      
+      Safety features:
+      - Uses DROP IF EXISTS to handle missing tables gracefully
+      - Only affects the specified schema (not entire database)
+      - Provides detailed logging of all actions for audit trail
+      - Reports count of objects before dropping
+      
+      Warning: This is a destructive operation. Use with caution in production schemas.
+      Recommended for dev/test/scratch schemas only.
+    arguments:
+      - name: older_than_days
+        description: |
+          Number of days since last modification. Tables/views not modified in this many days will be dropped.
+          Set to 0 to drop all tables modified today or earlier (use with extreme caution).
+          Common values: 7 (weekly cleanup), 30 (monthly cleanup), 90 (quarterly cleanup)
+        type: integer
+        default: 30
+      - name: database
+        description: The database to search for stale models
+        type: string
+        default: target.database
+      - name: schema
+        description: The schema to search for stale models (only this schema will be affected)
+        type: string
+        default: target.schema
+    examples:
+      - name: Clean models older than 5 days
+        description: Drop all tables/views in the target schema not modified in 5 days
+        code: |
+          # Run from terminal
+          uv run dbt run-operation clean_stale_models --args '{older_than_days: 5}'
+      - name: Clean specific dev schema
+        description: Clean up a specific development schema with 7-day retention
+        code: |
+          # Run from terminal
+          uv run dbt run-operation clean_stale_models --args '{
+            older_than_days: 7,
+            schema: "dev_scratch",
+            database: "analytics"
+          }'
+      - name: Monthly cleanup with defaults
+        description: Use default 30-day retention on target schema
+        code: |
+          # Run from terminal
+          uv run dbt run-operation clean_stale_models
+      - name: Clean all models (dangerous)
+        description: Drop all tables/views regardless of age (use with extreme caution)
+        code: |
+          # Run from terminal - WARNING: Drops all tables!
+          uv run dbt run-operation clean_stale_models --args '{
+            older_than_days: 0,
+            schema: "temp_testing"
+          }'
