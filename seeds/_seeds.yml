@@ -1,0 +1,15 @@
+seeds:
+  - name: employees
+    description: "Employee data"
+    columns:
+      - name: employee_id
+        description: "Employee ID"
+        tests:
+          - not_null
+          - unique
+      - name: name
+        description: "Employee name"
+      - name: department
+        description: "Employee department"
+      - name: salary
+        description: "Employee salary"
