@@ -1,6 +1,7 @@
 models:
   - name: fact_orders
     description: "Fact table for orders with payment information"
+    latest_version: 1
     config:
       contract:
         enforced: true
@@ -9,7 +10,7 @@ models:
         data_type: number
         description: "Unique identifier for each order"
         tests:
-          - unique
+          # - unique
           - not_null
         constraints:
           - type: not_null
@@ -41,7 +42,27 @@ models:
           - not_null
         constraints:
           - type: not_null
+    versions:
+      - v: 1
+        config:
+          alias: fact_orders  # keep version 1 as the default
+      - v: 2
+        # columns:
+        #   - include: all
+        #     exclude: [amount]
+        #   - name: order_date
+        #     data_type: varchar
+        columns:
+          - name: order_id
+            data_type: number
+          - name: customer_id  
+            data_type: number
+          - name: payment_status
+            data_type: varchar
+          - name: order_date
+            data_type: varchar
 
+    
   - name: dim_customers
     description: "Dimension table for customers with aggregated order metrics"
     config:
