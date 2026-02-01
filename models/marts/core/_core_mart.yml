@@ -1,0 +1,109 @@
+models:
+  - name: fact_orders
+    description: "Fact table for orders with payment information"
+    latest_version: 1
+    config:
+      group: product
+      access: public
+      contract:
+        enforced: true
+    columns:
+      - name: order_id
+        data_type: number
+        description: "Unique identifier for each order"
+        tests:
+          # - unique
+          - not_null
+        constraints:
+          - type: not_null
+      - name: customer_id
+        data_type: number
+        description: "Foreign key to dim_customers"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+        constraints:
+          - type: not_null
+      - name: amount
+        data_type: number
+        description: "Payment amount for the order"
+      - name: payment_status
+        data_type: varchar
+        description: "Status of the payment (success, failed, etc.)"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['success', 'fail']
+      - name: order_date
+        data_type: date
+        description: "Date when the order was placed"
+        tests:
+          - not_null
+        constraints:
+          - type: not_null
+    versions:
+      - v: 1
+        config:
+          alias: fact_orders  # keep version 1 as the default
+      - v: 2
+        # columns:
+        #   - include: all
+        #     exclude: [amount]
+        #   - name: order_date
+        #     data_type: varchar
+        columns:
+          - name: order_id
+            data_type: number
+          - name: customer_id  
+            data_type: number
+          - name: payment_status
+            data_type: varchar
+          - name: order_date
+            data_type: varchar
+
+    
+  - name: dim_customers
+    description: "Dimension table for customers with aggregated order metrics"
+    config:
+      group: product
+      access: public
+      contract:
+        enforced: true
+    columns:
+      - name: customer_id
+        data_type: number
+        description: "Unique identifier for each customer"
+        tests:
+          - unique
+          - not_null
+        constraints:
+          - type: not_null
+      - name: first_name
+        data_type: varchar
+        description: "Customer's first name"
+      - name: last_name
+        data_type: varchar
+        description: "Customer's last name"
+      - name: first_order_date
+        data_type: date
+        description: "Date of customer's first order"
+      - name: most_recent_order_date
+        data_type: date
+        description: "Date of customer's most recent order"
+      - name: number_of_orders
+        data_type: number
+        description: "Total number of orders placed by the customer"
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: lifetime_value
+        data_type: number
+        description: "Total value of all successful payments from the customer"
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"

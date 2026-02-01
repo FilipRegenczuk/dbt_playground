@@ -1,0 +1,11 @@
+groups:
+  - name: product
+    owner:
+      name: Filippo Reguiciini
+      email: f.reg@jaffleshop.com
+    description: "Group for products"
+  - name: broccollis
+    owner:
+      name: Michael Brocolly
+      email: data@jaffleshop.com
+    description: "Group for broccollis"
