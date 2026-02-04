@@ -7,3 +7,5 @@ packages:
     version: 2.10.0
   - git: https://github.com/dbt-labs/dbt-codegen.git
     revision: main
+  - package: tnightengale/dbt_meta_testing
+    version: 0.3.6

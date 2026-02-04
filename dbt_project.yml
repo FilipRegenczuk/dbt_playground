@@ -22,11 +22,13 @@ models:
   dbt_playground:
     staging:
       +materialized: view
+      +meta:
+        required_tests: {"unique.*|not_null": 2}
     marts:
       +materialized: table
       core:
         +materialized: table
       aggregates:
-        +materialized: table 
+        +materialized: table
 flags:
   require_generic_test_arguments_property: true
