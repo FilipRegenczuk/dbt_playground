@@ -30,6 +30,10 @@ models:
       - name: amount
         data_type: number
         description: "Payment amount for the order"
+        tests:
+          - average_dollars_spent_greater_than_one:
+              arguments:
+                group_by_column: customer_id
       - name: payment_status
         data_type: varchar
         description: "Status of the payment (success, failed, etc.)"
