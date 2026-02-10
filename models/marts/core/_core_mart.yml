@@ -12,7 +12,9 @@ models:
         data_type: number
         description: "Unique identifier for each order"
         tests:
-          # - unique
+          - unique:
+              config:
+                severity: warn
           - not_null
         constraints:
           - type: not_null
@@ -30,6 +32,12 @@ models:
       - name: amount
         data_type: number
         description: "Payment amount for the order"
+        tests:
+          - average_dollars_spent_greater_than_one:
+              arguments:
+                group_by_column: customer_id
+              config:
+                severity: warn
       - name: payment_status
         data_type: varchar
         description: "Status of the payment (success, failed, etc.)"
